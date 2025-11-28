@@ -1,0 +1,109 @@
+# 1. Instalar el servicio
+sudo apt update && sudo apt install nfs-kernel-server -y
+
+# 2. SOLUCIÓN DE SEGURIDAD (Esto arregló el "se queda colgado" y "no route to host")
+# Parrot OS es muy estricto, esto limpia las reglas que bloqueaban la conexión.
+sudo nft flush ruleset
+sudo systemctl stop ufw
+
+# 3. Crear carpeta y archivos (La solución al error "No such file")
+sudo mkdir -p /var/nfs/OS3
+sudo chown nobody:nogroup /var/nfs/OS3
+sudo chmod 777 /var/nfs/OS3
+cd /var/nfs/OS3
+sudo touch Adrian{1..100}.txt
+
+# 4. Configurar el archivo de exports
+# Agregamos la IP del cliente (192.168.0.18) con permisos de lectura/escritura
+echo "/var/nfs/OS3    192.168.0.18(rw,sync,no_subtree_check)" | sudo tee -a /etc/exports
+
+# 5. Aplicar cambios
+# El comando exportfs -arv confirma que la carpeta se está compartiendo
+sudo exportfs -arv
+sudo systemctl restart nfs-kernel-server
+
+
+2. Configuración del CLIENTE (VM2 - 192.168.0.18)
+Aquí instalamos el cliente, montamos la carpeta y configuramos el reinicio automático.
+
+# 1. Instalar herramientas de cliente (sin esto no funcionaba el showmount)
+sudo apt update && sudo apt install nfs-common -y
+
+# 2. Crear la carpeta donde aparecerán los archivos
+sudo mkdir -p /mnt/OS3_compartido
+
+# 3. Montar manualmente (Prueba de éxito)
+# Usamos la IP .23 que es la que funcionó al final
+sudo mount -v 192.168.0.23:/var/nfs/OS3 /mnt/OS3_compartido
+
+# 4. Verificar que se ven los archivos
+ls /mnt/OS3_compartido
+
+¡Genial! Me alegra mucho que funcionara.
+
+Aquí tienes el resumen consolidado y limpio de todo el proceso. He incluido los "trucos" que tuvimos que aplicar (limpiar el firewall, corregir la carpeta y ajustar permisos) para que te quede como una guía definitiva para tu práctica o futuros reportes.
+
+Datos finales de la práctica:
+
+Servidor (VM1): 192.168.0.23 (IP actualizada)
+
+Cliente (VM2): 192.168.0.18
+
+1. Configuración del SERVIDOR (VM1 - 192.168.0.23)
+Ejecuta estos comandos en orden. Incluyen la instalación, la creación correcta de carpetas y la solución al problema del Firewall.
+
+Bash
+
+# 1. Instalar el servicio
+sudo apt update && sudo apt install nfs-kernel-server -y
+
+# 2. SOLUCIÓN DE SEGURIDAD (Esto arregló el "se queda colgado" y "no route to host")
+# Parrot OS es muy estricto, esto limpia las reglas que bloqueaban la conexión.
+sudo nft flush ruleset
+sudo systemctl stop ufw
+
+# 3. Crear carpeta y archivos (La solución al error "No such file")
+sudo mkdir -p /var/nfs/OS3
+sudo chown nobody:nogroup /var/nfs/OS3
+sudo chmod 777 /var/nfs/OS3
+cd /var/nfs/OS3
+sudo touch Adrian{1..100}.txt
+
+# 4. Configurar el archivo de exports
+# Agregamos la IP del cliente (192.168.0.18) con permisos de lectura/escritura
+echo "/var/nfs/OS3    192.168.0.18(rw,sync,no_subtree_check)" | sudo tee -a /etc/exports
+
+# 5. Aplicar cambios
+# El comando exportfs -arv confirma que la carpeta se está compartiendo
+sudo exportfs -arv
+sudo systemctl restart nfs-kernel-server
+2. Configuración del CLIENTE (VM2 - 192.168.0.18)
+Aquí instalamos el cliente, montamos la carpeta y configuramos el reinicio automático.
+
+Bash
+
+# 1. Instalar herramientas de cliente (sin esto no funcionaba el showmount)
+sudo apt update && sudo apt install nfs-common -y
+
+# 2. Crear la carpeta donde aparecerán los archivos
+sudo mkdir -p /mnt/OS3_compartido
+
+# 3. Montar manualmente (Prueba de éxito)
+# Usamos la IP .23 que es la que funcionó al final
+sudo mount -v 192.168.0.23:/var/nfs/OS3 /mnt/OS3_compartido
+
+# 4. Verificar que se ven los archivos
+ls /mnt/OS3_compartido
+3. Persistencia (El requisito final del profesor)
+Para que se monte solo al reiniciar, editamos el fstab en el CLIENTE (VM2).
+
+Abre el archivo:
+
+sudo nano /etc/fstab
+Agrega esta línea al final (asegurándote de usar la IP .23):
+
+192.168.0.23:/var/nfs/OS3    /mnt/OS3_compartido    nfs    defaults    0 0
+
+4. Prueba Final (Evidencia)
+En el CLIENTE (VM2):
+ls /mnt/OS3_compartido
