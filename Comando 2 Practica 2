@@ -1,0 +1,91 @@
+# 1. Actualizar repositorios e instalar Samba
+sudo apt update && sudo apt install samba -y
+
+# 2. Habilitar e iniciar el servicio Samba automáticamente
+sudo systemctl enable --now smbd
+
+# 3. Crear la estructura de directorios y usuarios
+sudo mkdir -p /srv/samba/practica2
+sudo groupadd smbgroup
+# -m crea home, -G añade al grupo secundario
+sudo useradd -m -G smbgroup adrian 
+
+# 4. Asignar contraseña de Samba (Te pedirá escribirla 2 veces)
+sudo smbpasswd -a adrian
+
+# 5. Configurar permisos de la carpeta (Dueño: grupo smbgroup, Permisos: 775)
+sudo chown -R :smbgroup /srv/samba/practica2
+sudo chmod -R 775 /srv/samba/practica2
+
+# 6. Configurar Samba (Este bloque añade la configuración al final del archivo automáticamente)
+sudo bash -c 'cat <<EOF >> /etc/samba/smb.conf
+
+[Practica2]
+   path = /srv/samba/practica2
+   writable = yes
+   guest ok = no
+   valid users = @smbgroup
+   force create mode = 0775
+   force directory mode = 0775
+EOF'
+
+# 7. Reiniciar el servicio para aplicar cambios
+sudo systemctl restart smbd
+
+# 8. Crear los 100 archivos solicitados de una sola vez (Expansion de llaves)
+sudo touch /srv/samba/practica2/adrian{1..100}
+
+# 9. Ver la IP para conectarse desde Windows (Comando de red)
+ip a
+
+# 10. Validar la modificación final (Leer el archivo modificado desde Windows)
+cat /srv/samba/practica2/adrian99
+
+
+
+
+------------------------------WINDOWS------------------------------
+
+Paso 5: Mapear disco virtual en Windows
+Averigua la IP de tu Parrot OS con el comando: ip a (busca la dirección inet, por ejemplo 192.168.1.15).
+
+Ve a tu máquina Windows.
+
+Abre el Explorador de Archivos > Este Equipo (This PC).
+
+En el menú superior, busca los tres puntos o la opción Conectar a unidad de red (Map network drive).
+
+En "Carpeta" escribe: \\<IP_DE_PARROT>\Practica2
+
+Ejemplo: \\192.168.1.15\Practica2
+
+Marca la casilla "Conectar con otras credenciales" si tu usuario de Windows es diferente al de Samba.
+
+Haz clic en Finalizar. Te pedirá usuario y contraseña:
+
+Usuario: adrian
+
+Contraseña: (la que pusiste con smbpasswd)
+
+Se abrirá una nueva unidad (ej. Z:) donde verás los 100 archivos adrian.​
+
+Paso 6: Modificación y Validación
+En Windows:
+
+Dentro de la unidad mapeada, busca el archivo adrian99.
+
+Ábrelo con el Bloc de notas.
+
+Escribe: el zumzum de la carabela.
+
+Guarda el archivo y ciérralo.
+
+En Parrot OS (Validación):
+
+Regresa a tu terminal y verifica el contenido del archivo:
+
+bash
+$ cat /srv/samba/practica2/adrian99
+
+Deberías ver la frase "el zumzum de la carabela" impresa en la pantalla. 
+Esto confirma que la práctica está completa y la sincronización funciona correctamente.
