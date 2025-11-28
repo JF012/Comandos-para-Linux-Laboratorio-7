@@ -1,0 +1,166 @@
+# --- PASO 1: CONFIGURACIÓN DE RED Y NOMBRE (PRE-REQUISITOS) ---
+
+# 1. Abrir interfaz gráfica para configurar IP Estática (Manual)
+# (Dentro configuras: IP, Gateway y DNS 127.0.0.1)
+sudo nmtui
+
+# 2. Reiniciar la interfaz de red para aplicar la IP nueva
+sudo nmcli networking off && sudo nmcli networking on
+
+# 3. Verificar que tienes la IP correcta
+ip a
+
+# 4. Establecer el nombre del equipo
+sudo hostnamectl set-hostname servidor
+
+# 5. Editar el archivo hosts para asociar tu IP al dominio
+# (Agregaste la línea: TU_IP servidor.so3.inet servidor)
+sudo nano /etc/hosts
+
+# 6. Probar que el nombre responde a la IP
+ping -c 2 servidor.so3.inet
+
+
+# --- PASO 2: INSTALACIÓN DE SAMBA AD ---
+
+# 7. Actualizar repositorios
+sudo apt update
+
+# 8. Instalar paquetes necesarios
+# (Durante la instalación, definiste el reino como SO3.INET)
+sudo apt install samba smbclient winbind krb5-user net-tools -y
+
+
+# --- PASO 3: APROVISIONAMIENTO DEL DOMINIO ---
+
+# 9. Detener y deshabilitar servicios antiguos de SMB para evitar conflictos
+sudo systemctl stop smbd nmbd winbind
+sudo systemctl disable smbd nmbd winbind
+
+# 10. Desbloquear el servicio de Controlador de Dominio
+sudo systemctl unmask samba-ad-dc
+
+# 11. Respaldar (mover) el archivo de configuración original
+sudo mv /etc/samba/smb.conf /etc/samba/smb.conf.bak
+
+# 12. Crear el Dominio Interactivamente
+# (Realm: SO3.INET | Domain: SO3 | Role: DC | DNS: SAMBA_INTERNAL)
+sudo samba-tool domain provision --use-rfc2307 --interactive
+
+
+# --- PASO 4: FINALIZACIÓN Y ARRANQUE ---
+
+# 13. Copiar el archivo de configuración de Kerberos generado
+sudo cp /var/lib/samba/private/krb5.conf /etc/krb5.conf
+
+# 14. Iniciar el servicio de Active Directory
+sudo systemctl start samba-ad-dc
+
+# 15. Habilitar el servicio para que arranque automáticamente al reiniciar
+sudo systemctl enable samba-ad-dc
+
+
+# --- PASO 5: GESTIÓN DE USUARIOS (TU PRÁCTICA) ---
+
+# 16. Crear el usuario en el sistema Linux local
+sudo useradd -m lanegracubana
+
+# 17. Crear el usuario en el Dominio Samba (para autenticar en Windows)
+# (Aquí asignaste la contraseña/matrícula)
+sudo samba-tool user create lanegracubana
+
+# 18. (Opcional) Verificar que el usuario existe en la lista del dominio
+sudo samba-tool user list
+
+
+
+
+
+----------------------------------------WINDOWS----------------------------------------
+
+
+Abrir Conexiones de Red:
+
+Fuiste a Panel de Control > Redes e Internet > Centro de redes y recursos compartidos.
+
+Hiciste clic en "Cambiar configuración del adaptador" (a la izquierda).
+
+Propiedades del Adaptador:
+
+Clic derecho sobre tu tarjeta de red (Ethernet) > Propiedades.
+
+Seleccionaste Protocolo de Internet versión 4 (TCP/IPv4) y clic en Propiedades.
+
+Cambio de DNS:
+
+Dejaste la IP en automático (o manual si tu red lo requería), pero lo importante fue la sección de abajo.
+
+Marcaste "Usar las siguientes direcciones de servidor DNS".
+
+En Servidor DNS preferido, escribiste la IP Estática de tu Parrot (ej. 192.168.1.50).
+
+¿Por qué? Porque Samba en Parrot ahora actúa como el "directorio telefónico" de tu red. Si Windows quiere encontrar "SO3.inet", solo Parrot sabe dónde está.
+
+Fase 2: Prueba de Conectividad (Verificación)
+Antes de intentar unirte, verificaste que Windows pudiera "ver" y "resolver" el nombre del servidor.
+
+Abriste una terminal (cmd o PowerShell).
+
+Ejecutaste: ping servidor.so3.inet
+
+Si el ping respondió con la IP de tu Parrot, confirmaste que el DNS estaba funcionando perfectamente.
+
+Fase 3: Unirse al Dominio (El "Matrimonio")
+Aquí es donde cambiaste la identidad del equipo de ser "independiente" (Grupo de trabajo) a ser "miembro de una organización" (Dominio).
+
+Acceder a Propiedades del Sistema:
+
+Fuiste a Explorador de Archivos, clic derecho en "Este equipo" > Propiedades.
+
+Buscaste Configuración avanzada del sistema.
+
+Cambiar el Nombre:
+
+Fuiste a la pestaña Nombre de equipo y clic en el botón Cambiar....
+
+Selección de Dominio:
+
+En la sección "Miembro del", cambiaste el punto de "Grupo de trabajo" a Dominio.
+
+Escribiste el nombre de tu reino: SO3.inet.
+
+Autenticación Administrativa:
+
+Al darle Aceptar, Windows contactó a Parrot y apareció una ventana pidiendo credenciales.
+
+Usuario: Administrator (El "Dios" de Samba que se creó al aprovisionar).
+
+Contraseña: La que definiste en el paso samba-tool domain provision.
+
+Nota: Aquí NO usaste a "lanegracubana" todavía, porque solo un administrador tiene permiso para agregar computadoras al dominio.
+
+Éxito:
+
+Apareció el mensaje: "Se unió correctamente al dominio SO3.inet".
+
+Windows te obligó a Reiniciar para aplicar las políticas del servidor.
+
+Fase 4: Inicio de Sesión del Usuario (La Prueba Final)
+Una vez reiniciado, la pantalla de bloqueo cambió. Ya no solo mostraste usuarios locales, sino que la PC estaba lista para recibir usuarios de la red.
+
+Seleccionaste "Otro usuario" en la esquina inferior izquierda.
+
+Observaste que debajo del campo de contraseña decía "Iniciar sesión en: SO3".
+
+Ingresaste las credenciales de la práctica:
+
+Usuario: lanegracubana
+
+Contraseña: (Tu matrícula).
+
+Creación de Perfil:
+
+Al entrar, Windows tardó un poco más de lo normal y mostró mensajes como "Estamos preparando todo para ti".
+
+¿Por qué? Porque ese usuario nunca había existido en esa PC. Windows contactó a Parrot, 
+verificó la contraseña y creó una carpeta de usuario nueva (C:\Users\lanegracubana) en el disco duro.
